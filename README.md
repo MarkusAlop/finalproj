@@ -1,6 +1,6 @@
-# User Authentication API
+# User Authentication & Personal Finance API
 
-This project provides a basic user authentication API using Django, Django REST Framework, and JWT (SimpleJWT).
+This project provides a user authentication API and a personal finance management system using Django, Django REST Framework, and JWT (SimpleJWT).
 
 ## API Endpoints
 
@@ -21,6 +21,10 @@ This project provides a basic user authentication API using Django, Django REST 
     { "message": "User registered successfully." }
     ```
   - **400 Bad Request** (validation errors)
+  - **429 Too Many Requests**
+    ```json
+    { "detail": "Rate limit exceeded. Max 10 requests per 60 seconds." }
+    ```
 
 ### 2. Login (Obtain JWT Token)
 - **Method:** POST
@@ -41,6 +45,10 @@ This project provides a basic user authentication API using Django, Django REST 
     }
     ```
   - **401 Unauthorized** (invalid credentials)
+  - **429 Too Many Requests**
+    ```json
+    { "detail": "Rate limit exceeded. Max 10 requests per 60 seconds." }
+    ```
 
 ### 3. Protected Route
 - **Method:** GET
@@ -53,105 +61,109 @@ This project provides a basic user authentication API using Django, Django REST 
     { "message": "Hello, <username>! This is a protected route." }
     ```
   - **401 Unauthorized** (missing or invalid token)
+  - **429 Too Many Requests**
+    ```json
+    { "detail": "Rate limit exceeded. Max 5 requests per 60 seconds." }
+    ```
 
 ## CRUD API Endpoints (Authenticated)
 
 All endpoints below require the `Authorization: Bearer <access_token>` header.
 
-### Author Endpoints
-- **List Authors**
+### Account Endpoints
+- **List Accounts**
   - Method: GET
-  - URL: `/api/authors/`
-  - Response: 200 OK
-    ```json
-    [
-      {
-        "id": 1,
-        "name": "Author Name",
-        "birth_date": "1970-01-01",
-        "nationality": "Country",
-        "biography": "Bio...",
-        "email": "author@email.com"
-      }
-    ]
-    ```
-- **Create Author**
+  - URL: `/api/accounts/`
+  - **Rate Limit:** 10 requests per 60 seconds
+- **Create Account**
   - Method: POST
-  - URL: `/api/authors/`
+  - URL: `/api/accounts/`
   - Request Body:
     ```json
     {
-      "name": "Author Name",
-      "birth_date": "1970-01-01",
-      "nationality": "Country",
-      "biography": "Bio...",
-      "email": "author@email.com"
+      "name": "Cash Wallet",
+      "type": "cash",
+      "balance": 100.00,
+      "institution": "Home"
     }
     ```
-- **Retrieve Author**
+- **Retrieve Account**
   - Method: GET
-  - URL: `/api/authors/{id}/`
-- **Update Author**
+  - URL: `/api/accounts/{id}/`
+- **Update Account**
   - Method: PUT/PATCH
-  - URL: `/api/authors/{id}/`
-- **Delete Author**
+  - URL: `/api/accounts/{id}/`
+- **Delete Account**
   - Method: DELETE
-  - URL: `/api/authors/{id}/`
+  - URL: `/api/accounts/{id}/`
+- **429 Too Many Requests**
+  ```json
+  { "detail": "Rate limit exceeded. Max 10 requests per 60 seconds." }
+  ```
 
-### Publisher Endpoints
-- **List Publishers**
+### Category Endpoints
+- **List Categories**
   - Method: GET
-  - URL: `/api/publishers/`
-- **Create Publisher**
+  - URL: `/api/categories/`
+  - **Rate Limit:** 10 requests per 60 seconds
+- **Create Category**
   - Method: POST
-  - URL: `/api/publishers/`
+  - URL: `/api/categories/`
   - Request Body:
     ```json
     {
-      "name": "Publisher Name",
-      "address": "123 Main St",
-      "website": "https://example.com",
-      "contact_email": "contact@example.com",
-      "established_year": 2000
+      "name": "Food",
+      "type": "expense",
+      "description": "Groceries and dining out",
+      "color": "#ff0000"
     }
     ```
-- **Retrieve Publisher**
+- **Retrieve Category**
   - Method: GET
-  - URL: `/api/publishers/{id}/`
-- **Update Publisher**
+  - URL: `/api/categories/{id}/`
+- **Update Category**
   - Method: PUT/PATCH
-  - URL: `/api/publishers/{id}/`
-- **Delete Publisher**
+  - URL: `/api/categories/{id}/`
+- **Delete Category**
   - Method: DELETE
-  - URL: `/api/publishers/{id}/`
+  - URL: `/api/categories/{id}/`
+- **429 Too Many Requests**
+  ```json
+  { "detail": "Rate limit exceeded. Max 10 requests per 60 seconds." }
+  ```
 
-### Book Endpoints
-- **List Books**
+### Transaction Endpoints
+- **List Transactions**
   - Method: GET
-  - URL: `/api/books/`
-- **Create Book**
+  - URL: `/api/transactions/`
+  - **Rate Limit:** 10 requests per 60 seconds
+- **Create Transaction**
   - Method: POST
-  - URL: `/api/books/`
+  - URL: `/api/transactions/`
   - Request Body:
     ```json
     {
-      "title": "Book Title",
-      "author": 1,
-      "publisher": 1,
-      "publication_date": "2024-01-01",
-      "isbn": "1234567890123",
-      "summary": "Book summary..."
+      "account": 1,
+      "category": 2,
+      "amount": 50.00,
+      "date": "2024-06-01",
+      "description": "Grocery shopping",
+      "is_income": false
     }
     ```
-- **Retrieve Book**
+- **Retrieve Transaction**
   - Method: GET
-  - URL: `/api/books/{id}/`
-- **Update Book**
+  - URL: `/api/transactions/{id}/`
+- **Update Transaction**
   - Method: PUT/PATCH
-  - URL: `/api/books/{id}/`
-- **Delete Book**
+  - URL: `/api/transactions/{id}/`
+- **Delete Transaction**
   - Method: DELETE
-  - URL: `/api/books/{id}/`
+  - URL: `/api/transactions/{id}/`
+- **429 Too Many Requests**
+  ```json
+  { "detail": "Rate limit exceeded. Max 10 requests per 60 seconds." }
+  ```
 
 **All requests must include:**
 ```
@@ -163,6 +175,16 @@ Content-Type: application/json
 - 401 Unauthorized: If token is missing or invalid
 - 400 Bad Request: For invalid data
 - 404 Not Found: If resource does not exist
+- 429 Too Many Requests: If rate limit is exceeded
+
+## Rate Limiting
+- **Register & Login:** 10 requests per 60 seconds per user/IP
+- **Protected Route:** 5 requests per 60 seconds per user/IP
+- **Account, Category, Transaction CRUD:** 10 requests per 60 seconds per user/IP
+- If the limit is exceeded, a 429 response is returned:
+  ```json
+  { "detail": "Rate limit exceeded. Max <limit> requests per <period> seconds." }
+  ```
 
 ## Setup
 1. Install dependencies:
@@ -181,4 +203,4 @@ Content-Type: application/json
 ## Notes
 - Passwords are securely hashed before storage.
 - JWT tokens are used for authentication.
-- Proper error handling is implemented for invalid credentials and unauthorized access. 
+- Proper error handling is implemented for invalid credentials, unauthorized access, and rate limiting. 

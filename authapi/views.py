@@ -17,6 +17,43 @@ from rest_framework import viewsets
 from .models import Account, Category, Transaction
 from django.views import View
 from django.urls import reverse
+from django.core.cache import cache
+from functools import wraps
+from rest_framework.exceptions import Throttled
+from rest_framework import status as drf_status
+
+# Custom rate limiting decorator
+# Example: @rate_limit(key_func, limit=5, period=60)
+def rate_limit(key_func=None, limit=5, period=60):
+    """
+    Rate limit decorator for Django views.
+    :param key_func: function(request) -> str, unique key per user/IP
+    :param limit: max requests
+    :param period: seconds
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def _wrapped_view(request, *args, **kwargs):
+            # Use user id if authenticated, else IP
+            if key_func:
+                key = key_func(request)
+            else:
+                if hasattr(request, 'user') and request.user.is_authenticated:
+                    key = f"rl:{request.user.id}"
+                else:
+                    ip = request.META.get('REMOTE_ADDR', 'anon')
+                    key = f"rl:ip:{ip}"
+            count = cache.get(key, 0)
+            if count >= limit:
+                resp = Response({
+                    'detail': f'Rate limit exceeded. Max {limit} requests per {period} seconds.'
+                }, status=429)
+                return resp
+            else:
+                cache.set(key, count + 1, timeout=period)
+                return view_func(request, *args, **kwargs)
+        return _wrapped_view
+    return decorator
 
 # Serializer for user registration
 class RegisterSerializer(serializers.ModelSerializer):
@@ -34,6 +71,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 class RegisterView(APIView):
+    @method_decorator(rate_limit(limit=10, period=60))
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
@@ -43,12 +81,20 @@ class RegisterView(APIView):
 
 # JWT login view (using SimpleJWT's TokenObtainPairView)
 class LoginView(TokenObtainPairView):
-    pass
+    @method_decorator(rate_limit(limit=10, period=60))
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
 
 # Protected route example
 class ProtectedView(APIView):
+    """
+    GET /api/protected/
+    Protected route. Requires JWT authentication. Rate limited to 5 requests per minute.
+    Response: {"message": "Hello, <username>! This is a protected route."}
+    """
     permission_classes = [IsAuthenticated]
 
+    @method_decorator(rate_limit(limit=5, period=60))
     def get(self, request):
         return Response({'message': f'Hello, {request.user.username}! This is a protected route.'})
 
@@ -124,10 +170,23 @@ class AccountViewSet(viewsets.ModelViewSet):
     serializer_class = AccountSerializer
     permission_classes = [IsAuthenticated]
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+    @method_decorator(rate_limit(limit=10, period=60))
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
-    def perform_update(self, serializer):
+    @method_decorator(rate_limit(limit=10, period=60))
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @method_decorator(rate_limit(limit=10, period=60))
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @method_decorator(rate_limit(limit=10, period=60))
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -135,10 +194,23 @@ class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
     permission_classes = [IsAuthenticated]
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+    @method_decorator(rate_limit(limit=10, period=60))
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
-    def perform_update(self, serializer):
+    @method_decorator(rate_limit(limit=10, period=60))
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @method_decorator(rate_limit(limit=10, period=60))
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @method_decorator(rate_limit(limit=10, period=60))
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
 class TransactionViewSet(viewsets.ModelViewSet):
@@ -146,11 +218,21 @@ class TransactionViewSet(viewsets.ModelViewSet):
     serializer_class = TransactionSerializer
     permission_classes = [IsAuthenticated]
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+    @method_decorator(rate_limit(limit=10, period=60))
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
-    def perform_update(self, serializer):
-        serializer.save(user=self.request.user)
+    @method_decorator(rate_limit(limit=10, period=60))
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @method_decorator(rate_limit(limit=10, period=60))
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @method_decorator(rate_limit(limit=10, period=60))
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
 
 # CRUD UI Views
 class AccountListView(View):
