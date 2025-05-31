@@ -12,9 +12,9 @@
         <input type="text" id="username" name="username" required><br>
         <label for="password">Password:</label><br>
         <input type="password" id="password" name="password" required><br><br>
-        <input type="submit" value="Login">
+        <input type="submit" value="Login" href="api/crud/authors/">
     </form>
-    <p>Don't have an account? <a href="/register/">Register here</a>.</p>
+    <p>Don't have an account? <a href="/api/register-page/">Register here</a>.</p>
     {% if error %}<p style="color:red">{{ error }}</p>{% endif %}
     {% if token %}<p style="color:green">Access Token: {{ token }}</p>{% endif %}
 </body>

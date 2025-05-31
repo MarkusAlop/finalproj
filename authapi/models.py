@@ -1,36 +1,51 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 # No custom models needed. Using Django's default User model for authentication.
 
 # Create your models here.
 
-class Author(models.Model):
+class Account(models.Model):
+    ACCOUNT_TYPES = [
+        ('cash', 'Cash'),
+        ('bank', 'Bank'),
+        ('credit', 'Credit Card'),
+        ('investment', 'Investment'),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
-    birth_date = models.DateField()
-    nationality = models.CharField(max_length=50)
-    biography = models.TextField()
-    email = models.EmailField(unique=True)
+    type = models.CharField(max_length=20, choices=ACCOUNT_TYPES)
+    balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    institution = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.get_type_display()})"
 
-class Publisher(models.Model):
+class Category(models.Model):
+    CATEGORY_TYPES = [
+        ('income', 'Income'),
+        ('expense', 'Expense'),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
-    address = models.CharField(max_length=255)
-    website = models.URLField()
-    contact_email = models.EmailField()
-    established_year = models.PositiveIntegerField()
+    type = models.CharField(max_length=10, choices=CATEGORY_TYPES)
+    description = models.TextField(blank=True)
+    color = models.CharField(max_length=7, default="#ffffff")
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.get_type_display()})"
 
-class Book(models.Model):
-    title = models.CharField(max_length=200)
-    author = models.ForeignKey(Author, on_delete=models.CASCADE)
-    publisher = models.ForeignKey(Publisher, on_delete=models.CASCADE)
-    publication_date = models.DateField()
-    isbn = models.CharField(max_length=13, unique=True)
-    summary = models.TextField()
+class Transaction(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    account = models.ForeignKey(Account, on_delete=models.CASCADE)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    date = models.DateField()
+    description = models.TextField(blank=True)
+    is_income = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.title
+        return f"{self.date}: {self.amount} ({'Income' if self.is_income else 'Expense'})"

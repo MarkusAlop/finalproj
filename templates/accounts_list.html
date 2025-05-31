@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Accounts{% endblock %}
+{% block content %}
+<h2>Accounts</h2>
+<a href="/api/crud/accounts/create/">Create New Account</a>
+<table border="1" cellpadding="5">
+    <tr>
+        <th>ID</th><th>Name</th><th>Type</th><th>Balance</th><th>Institution</th><th>Actions</th>
+    </tr>
+    {% for account in accounts %}
+    <tr>
+        <td>{{ account.id }}</td>
+        <td>{{ account.name }}</td>
+        <td>{{ account.type }}</td>
+        <td>{{ account.balance }}</td>
+        <td>{{ account.institution }}</td>
+        <td>
+            <a href="/api/crud/accounts/{{ account.id }}/edit/">Edit</a>
+            <form action="/api/crud/accounts/{{ account.id }}/delete/" method="post" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" onclick="return confirm('Delete this account?');">Delete</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %} 

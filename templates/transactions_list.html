@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Transactions{% endblock %}
+{% block content %}
+<h2>Transactions</h2>
+<a href="/api/crud/transactions/create/">Create New Transaction</a>
+<table border="1" cellpadding="5">
+    <tr>
+        <th>ID</th><th>Date</th><th>Account</th><th>Category</th><th>Amount</th><th>Type</th><th>Description</th><th>Actions</th>
+    </tr>
+    {% for transaction in transactions %}
+    <tr>
+        <td>{{ transaction.id }}</td>
+        <td>{{ transaction.date }}</td>
+        <td>{{ transaction.account }}</td>
+        <td>{{ transaction.category }}</td>
+        <td>{{ transaction.amount }}</td>
+        <td>{% if transaction.is_income %}Income{% else %}Expense{% endif %}</td>
+        <td>{{ transaction.description }}</td>
+        <td>
+            <a href="/api/crud/transactions/{{ transaction.id }}/edit/">Edit</a>
+            <form action="/api/crud/transactions/{{ transaction.id }}/delete/" method="post" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" onclick="return confirm('Delete this transaction?');">Delete</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %} 

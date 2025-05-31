@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}Category Form{% endblock %}
+{% block content %}
+<h2>{% if category %}Edit Category{% else %}Create Category{% endif %}</h2>
+<form method="post">
+    {% csrf_token %}
+    <label>Name:</label><br>
+    <input type="text" name="name" value="{{ category.name|default:'' }}" required><br>
+    <label>Type:</label><br>
+    <select name="type" required>
+        <option value="">Select Type</option>
+        <option value="income" {% if category.type == 'income' %}selected{% endif %}>Income</option>
+        <option value="expense" {% if category.type == 'expense' %}selected{% endif %}>Expense</option>
+    </select><br>
+    <label>Description:</label><br>
+    <input type="text" name="description" value="{{ category.description|default:'' }}"><br>
+    <label>Color:</label><br>
+    <input type="color" name="color" value="{{ category.color|default:'#ffffff' }}"><br><br>
+    <input type="submit" value="{% if category %}Update{% else %}Create{% endif %}">
+</form>
+<a href="/api/crud/categories/">Back to Categories</a>
+{% endblock %} 

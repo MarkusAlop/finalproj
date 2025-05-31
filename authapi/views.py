@@ -14,7 +14,9 @@ from django.http import HttpResponse
 import requests
 from django.conf import settings
 from rest_framework import viewsets
-from .models import Author, Publisher, Book
+from .models import Account, Category, Transaction
+from django.views import View
+from django.urls import reverse
 
 # Serializer for user registration
 class RegisterSerializer(serializers.ModelSerializer):
@@ -72,8 +74,11 @@ class RegisterPageView(APIView):
             error = response.json()
             return render(request, 'register.html', {'error': error})
 
-# HTML Login View
-@method_decorator(csrf_exempt, name='dispatch')
+# Helper to get JWT token from session
+def get_token(request):
+    return request.session.get('jwt_token')
+
+# Login page override to store JWT in session
 class LoginPageView(APIView):
     authentication_classes = []
     permission_classes = []
@@ -88,39 +93,266 @@ class LoginPageView(APIView):
         response = requests.post(request.build_absolute_uri('/api/login/'), data=data)
         if response.status_code == 200:
             token = response.json().get('access')
-            return render(request, 'login.html', {'token': token})
+            request.session['jwt_token'] = token
+            return redirect('/api/crud/accounts/')
         else:
             error = response.json().get('detail', 'Invalid credentials')
             return render(request, 'login.html', {'error': error})
 
 # Serializers for CRUD
-class AuthorSerializer(serializers.ModelSerializer):
+class AccountSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Author
+        model = Account
         fields = '__all__'
+        read_only_fields = ['user']
 
-class PublisherSerializer(serializers.ModelSerializer):
+class CategorySerializer(serializers.ModelSerializer):
     class Meta:
-        model = Publisher
+        model = Category
         fields = '__all__'
+        read_only_fields = ['user']
 
-class BookSerializer(serializers.ModelSerializer):
+class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Book
+        model = Transaction
         fields = '__all__'
+        read_only_fields = ['user']
 
 # CRUD ViewSets (all require authentication)
-class AuthorViewSet(viewsets.ModelViewSet):
-    queryset = Author.objects.all()
-    serializer_class = AuthorSerializer
+class AccountViewSet(viewsets.ModelViewSet):
+    queryset = Account.objects.all()
+    serializer_class = AccountSerializer
     permission_classes = [IsAuthenticated]
 
-class PublisherViewSet(viewsets.ModelViewSet):
-    queryset = Publisher.objects.all()
-    serializer_class = PublisherSerializer
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save(user=self.request.user)
+
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
     permission_classes = [IsAuthenticated]
 
-class BookViewSet(viewsets.ModelViewSet):
-    queryset = Book.objects.all()
-    serializer_class = BookSerializer
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save(user=self.request.user)
+
+class TransactionViewSet(viewsets.ModelViewSet):
+    queryset = Transaction.objects.all()
+    serializer_class = TransactionSerializer
     permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save(user=self.request.user)
+
+# CRUD UI Views
+class AccountListView(View):
+    def get(self, request):
+        token = get_token(request)
+        if not token:
+            return redirect('/api/login-page/')
+        headers = {'Authorization': f'Bearer {token}'}
+        resp = requests.get(request.build_absolute_uri('/api/accounts/'), headers=headers)
+        accounts = resp.json() if resp.status_code == 200 else []
+        return render(request, 'accounts_list.html', {'accounts': accounts})
+
+class AccountCreateView(View):
+    def get(self, request):
+        return render(request, 'account_form.html')
+    def post(self, request):
+        token = get_token(request)
+        if not token:
+            return redirect('/api/login-page/')
+        headers = {'Authorization': f'Bearer {token}'}
+        data = {
+            'name': request.POST.get('name'),
+            'type': request.POST.get('type'),
+            'balance': request.POST.get('balance'),
+            'institution': request.POST.get('institution'),
+        }
+        resp = requests.post(request.build_absolute_uri('/api/accounts/'), json=data, headers=headers)
+        if resp.status_code == 201:
+            return redirect('/api/crud/accounts/')
+        return render(request, 'account_form.html', {'error': resp.text})
+
+class AccountUpdateView(View):
+    def get(self, request, pk):
+        token = get_token(request)
+        if not token:
+            return redirect('/api/login-page/')
+        headers = {'Authorization': f'Bearer {token}'}
+        resp = requests.get(request.build_absolute_uri(f'/api/accounts/{pk}/'), headers=headers)
+        account = resp.json() if resp.status_code == 200 else None
+        return render(request, 'account_form.html', {'account': account})
+    def post(self, request, pk):
+        token = get_token(request)
+        if not token:
+            return redirect('/api/login-page/')
+        headers = {'Authorization': f'Bearer {token}'}
+        data = {
+            'name': request.POST.get('name'),
+            'type': request.POST.get('type'),
+            'balance': request.POST.get('balance'),
+            'institution': request.POST.get('institution'),
+        }
+        resp = requests.put(request.build_absolute_uri(f'/api/accounts/{pk}/'), json=data, headers=headers)
+        if resp.status_code in (200, 204):
+            return redirect('/api/crud/accounts/')
+        return render(request, 'account_form.html', {'error': resp.text, 'account': data})
+
+class AccountDeleteView(View):
+    def post(self, request, pk):
+        token = get_token(request)
+        if not token:
+            return redirect('/api/login-page/')
+        headers = {'Authorization': f'Bearer {token}'}
+        requests.delete(request.build_absolute_uri(f'/api/accounts/{pk}/'), headers=headers)
+        return redirect('/api/crud/accounts/')
+
+class CategoryListView(View):
+    def get(self, request):
+        token = get_token(request)
+        if not token:
+            return redirect('/api/login-page/')
+        headers = {'Authorization': f'Bearer {token}'}
+        resp = requests.get(request.build_absolute_uri('/api/categories/'), headers=headers)
+        categories = resp.json() if resp.status_code == 200 else []
+        return render(request, 'categories_list.html', {'categories': categories})
+
+class CategoryCreateView(View):
+    def get(self, request):
+        return render(request, 'category_form.html')
+    def post(self, request):
+        token = get_token(request)
+        if not token:
+            return redirect('/api/login-page/')
+        headers = {'Authorization': f'Bearer {token}'}
+        data = {
+            'name': request.POST.get('name'),
+            'type': request.POST.get('type'),
+            'description': request.POST.get('description'),
+            'color': request.POST.get('color'),
+        }
+        resp = requests.post(request.build_absolute_uri('/api/categories/'), json=data, headers=headers)
+        if resp.status_code == 201:
+            return redirect('/api/crud/categories/')
+        return render(request, 'category_form.html', {'error': resp.text})
+
+class CategoryUpdateView(View):
+    def get(self, request, pk):
+        token = get_token(request)
+        if not token:
+            return redirect('/api/login-page/')
+        headers = {'Authorization': f'Bearer {token}'}
+        resp = requests.get(request.build_absolute_uri(f'/api/categories/{pk}/'), headers=headers)
+        category = resp.json() if resp.status_code == 200 else None
+        return render(request, 'category_form.html', {'category': category})
+    def post(self, request, pk):
+        token = get_token(request)
+        if not token:
+            return redirect('/api/login-page/')
+        headers = {'Authorization': f'Bearer {token}'}
+        data = {
+            'name': request.POST.get('name'),
+            'type': request.POST.get('type'),
+            'description': request.POST.get('description'),
+            'color': request.POST.get('color'),
+        }
+        resp = requests.put(request.build_absolute_uri(f'/api/categories/{pk}/'), json=data, headers=headers)
+        if resp.status_code in (200, 204):
+            return redirect('/api/crud/categories/')
+        return render(request, 'category_form.html', {'error': resp.text, 'category': data})
+
+class CategoryDeleteView(View):
+    def post(self, request, pk):
+        token = get_token(request)
+        if not token:
+            return redirect('/api/login-page/')
+        headers = {'Authorization': f'Bearer {token}'}
+        requests.delete(request.build_absolute_uri(f'/api/categories/{pk}/'), headers=headers)
+        return redirect('/api/crud/categories/')
+
+class TransactionListView(View):
+    def get(self, request):
+        token = get_token(request)
+        if not token:
+            return redirect('/api/login-page/')
+        headers = {'Authorization': f'Bearer {token}'}
+        resp = requests.get(request.build_absolute_uri('/api/transactions/'), headers=headers)
+        transactions = resp.json() if resp.status_code == 200 else []
+        return render(request, 'transactions_list.html', {'transactions': transactions})
+
+class TransactionCreateView(View):
+    def get(self, request):
+        token = get_token(request)
+        if not token:
+            return redirect('/api/login-page/')
+        headers = {'Authorization': f'Bearer {token}'}
+        accounts = requests.get(request.build_absolute_uri('/api/accounts/'), headers=headers).json()
+        categories = requests.get(request.build_absolute_uri('/api/categories/'), headers=headers).json()
+        return render(request, 'transaction_form.html', {'accounts': accounts, 'categories': categories})
+    def post(self, request):
+        token = get_token(request)
+        if not token:
+            return redirect('/api/login-page/')
+        headers = {'Authorization': f'Bearer {token}'}
+        data = {
+            'account': request.POST.get('account'),
+            'category': request.POST.get('category'),
+            'amount': request.POST.get('amount'),
+            'date': request.POST.get('date'),
+            'description': request.POST.get('description'),
+            'is_income': request.POST.get('is_income') == 'on',
+        }
+        resp = requests.post(request.build_absolute_uri('/api/transactions/'), json=data, headers=headers)
+        if resp.status_code == 201:
+            return redirect('/api/crud/transactions/')
+        accounts = requests.get(request.build_absolute_uri('/api/accounts/'), headers=headers).json()
+        categories = requests.get(request.build_absolute_uri('/api/categories/'), headers=headers).json()
+        return render(request, 'transaction_form.html', {'error': resp.text, 'accounts': accounts, 'categories': categories})
+
+class TransactionUpdateView(View):
+    def get(self, request, pk):
+        token = get_token(request)
+        if not token:
+            return redirect('/api/login-page/')
+        headers = {'Authorization': f'Bearer {token}'}
+        transaction = requests.get(request.build_absolute_uri(f'/api/transactions/{pk}/'), headers=headers).json()
+        accounts = requests.get(request.build_absolute_uri('/api/accounts/'), headers=headers).json()
+        categories = requests.get(request.build_absolute_uri('/api/categories/'), headers=headers).json()
+        return render(request, 'transaction_form.html', {'transaction': transaction, 'accounts': accounts, 'categories': categories})
+    def post(self, request, pk):
+        token = get_token(request)
+        if not token:
+            return redirect('/api/login-page/')
+        headers = {'Authorization': f'Bearer {token}'}
+        data = {
+            'account': request.POST.get('account'),
+            'category': request.POST.get('category'),
+            'amount': request.POST.get('amount'),
+            'date': request.POST.get('date'),
+            'description': request.POST.get('description'),
+            'is_income': request.POST.get('is_income') == 'on',
+        }
+        resp = requests.put(request.build_absolute_uri(f'/api/transactions/{pk}/'), json=data, headers=headers)
+        if resp.status_code in (200, 204):
+            return redirect('/api/crud/transactions/')
+        accounts = requests.get(request.build_absolute_uri('/api/accounts/'), headers=headers).json()
+        categories = requests.get(request.build_absolute_uri('/api/categories/'), headers=headers).json()
+        return render(request, 'transaction_form.html', {'error': resp.text, 'transaction': data, 'accounts': accounts, 'categories': categories})
+
+class TransactionDeleteView(View):
+    def post(self, request, pk):
+        token = get_token(request)
+        if not token:
+            return redirect('/api/login-page/')
+        headers = {'Authorization': f'Bearer {token}'}
+        requests.delete(request.build_absolute_uri(f'/api/transactions/{pk}/'), headers=headers)
+        return redirect('/api/crud/transactions/')

@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Categories{% endblock %}
+{% block content %}
+<h2>Categories</h2>
+<a href="/api/crud/categories/create/">Create New Category</a>
+<table border="1" cellpadding="5">
+    <tr>
+        <th>ID</th><th>Name</th><th>Type</th><th>Description</th><th>Color</th><th>Actions</th>
+    </tr>
+    {% for category in categories %}
+    <tr>
+        <td>{{ category.id }}</td>
+        <td>{{ category.name }}</td>
+        <td>{{ category.type }}</td>
+        <td>{{ category.description }}</td>
+        <td><span style="background:{{ category.color }};padding:2px 10px;">{{ category.color }}</span></td>
+        <td>
+            <a href="/api/crud/categories/{{ category.id }}/edit/">Edit</a>
+            <form action="/api/crud/categories/{{ category.id }}/delete/" method="post" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" onclick="return confirm('Delete this category?');">Delete</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %} 

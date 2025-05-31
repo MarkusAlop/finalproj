@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}CRUD UI{% endblock %}</title>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <nav>
+        <a href="/api/crud/accounts/">Accounts</a> |
+        <a href="/api/crud/categories/">Categories</a> |
+        <a href="/api/crud/transactions/">Transactions</a> |
+        <a href="/api/login-page/">Back to Login</a>
+    </nav>
+    <hr>
+    {% if message %}<p style="color:green">{{ message }}</p>{% endif %}
+    {% if error %}<p style="color:red">{{ error }}</p>{% endif %}
+    {% block content %}{% endblock %}
+</body>
+</html> 
