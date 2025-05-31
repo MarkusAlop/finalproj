@@ -13,6 +13,8 @@ from django.utils.decorators import method_decorator
 from django.http import HttpResponse
 import requests
 from django.conf import settings
+from rest_framework import viewsets
+from .models import Author, Publisher, Book
 
 # Serializer for user registration
 class RegisterSerializer(serializers.ModelSerializer):
@@ -90,3 +92,35 @@ class LoginPageView(APIView):
         else:
             error = response.json().get('detail', 'Invalid credentials')
             return render(request, 'login.html', {'error': error})
+
+# Serializers for CRUD
+class AuthorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Author
+        fields = '__all__'
+
+class PublisherSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Publisher
+        fields = '__all__'
+
+class BookSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Book
+        fields = '__all__'
+
+# CRUD ViewSets (all require authentication)
+class AuthorViewSet(viewsets.ModelViewSet):
+    queryset = Author.objects.all()
+    serializer_class = AuthorSerializer
+    permission_classes = [IsAuthenticated]
+
+class PublisherViewSet(viewsets.ModelViewSet):
+    queryset = Publisher.objects.all()
+    serializer_class = PublisherSerializer
+    permission_classes = [IsAuthenticated]
+
+class BookViewSet(viewsets.ModelViewSet):
+    queryset = Book.objects.all()
+    serializer_class = BookSerializer
+    permission_classes = [IsAuthenticated]
