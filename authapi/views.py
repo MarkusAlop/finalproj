@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -8,6 +8,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework import serializers
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from django.http import HttpResponse
+import requests
+from django.conf import settings
 
 # Serializer for user registration
 class RegisterSerializer(serializers.ModelSerializer):
@@ -42,3 +47,46 @@ class ProtectedView(APIView):
 
     def get(self, request):
         return Response({'message': f'Hello, {request.user.username}! This is a protected route.'})
+
+# HTML Registration View
+@method_decorator(csrf_exempt, name='dispatch')
+class RegisterPageView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request):
+        return render(request, 'register.html')
+
+    def post(self, request):
+        username = request.data.get('username') or request.POST.get('username')
+        email = request.data.get('email') or request.POST.get('email')
+        password = request.data.get('password') or request.POST.get('password')
+        data = {'username': username, 'email': email, 'password': password}
+        # Use internal API call
+        response = requests.post(request.build_absolute_uri('/api/register/'), data=data)
+        if response.status_code == 201:
+            return render(request, 'register.html', {'message': 'Registration successful! Please log in.'})
+        else:
+            error = response.json()
+            return render(request, 'register.html', {'error': error})
+
+# HTML Login View
+@method_decorator(csrf_exempt, name='dispatch')
+class LoginPageView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request):
+        return render(request, 'login.html')
+
+    def post(self, request):
+        username = request.data.get('username') or request.POST.get('username')
+        password = request.data.get('password') or request.POST.get('password')
+        data = {'username': username, 'password': password}
+        response = requests.post(request.build_absolute_uri('/api/login/'), data=data)
+        if response.status_code == 200:
+            token = response.json().get('access')
+            return render(request, 'login.html', {'token': token})
+        else:
+            error = response.json().get('detail', 'Invalid credentials')
+            return render(request, 'login.html', {'error': error})
