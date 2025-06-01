@@ -14,13 +14,14 @@ from django.http import HttpResponse
 import requests
 from django.conf import settings
 from rest_framework import viewsets
-from .models import Account, Category, Transaction
+from .models import Account, Category, Transaction, UserProfile
 from django.views import View
 from django.urls import reverse
 from django.core.cache import cache
 from functools import wraps
 from rest_framework.exceptions import Throttled
 from rest_framework import status as drf_status
+from rest_framework.parsers import MultiPartParser, FormParser
 
 # Custom rate limiting decorator
 # Example: @rate_limit(key_func, limit=5, period=60)
@@ -57,20 +58,34 @@ def rate_limit(key_func=None, limit=5, period=60):
 
 # Serializer for user registration
 class RegisterSerializer(serializers.ModelSerializer):
+    photo = serializers.ImageField(write_only=True, required=False)
+
     class Meta:
         model = User
-        fields = ('username', 'password', 'email')
+        fields = ('username', 'password', 'email', 'photo')
         extra_kwargs = {'password': {'write_only': True}}
 
+    def validate_photo(self, value):
+        if value:
+            if value.size > 2 * 1024 * 1024:
+                raise serializers.ValidationError('Photo size must be less than 2MB.')
+            if value.content_type not in ['image/jpeg', 'image/png', 'image/webp']:
+                raise serializers.ValidationError('Only JPEG, PNG, and WebP images are allowed.')
+        return value
+
     def create(self, validated_data):
+        photo = validated_data.pop('photo', None)
         user = User.objects.create(
             username=validated_data['username'],
             email=validated_data.get('email', ''),
             password=make_password(validated_data['password'])
         )
+        UserProfile.objects.create(user=user, photo=photo)
         return user
 
 class RegisterView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+
     @method_decorator(rate_limit(limit=10, period=60))
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)

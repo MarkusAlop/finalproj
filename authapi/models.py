@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.conf import settings
+from django.core.validators import FileExtensionValidator
 
 # No custom models needed. Using Django's default User model for authentication.
 
@@ -49,3 +51,15 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.date}: {self.amount} ({'Income' if self.is_income else 'Expense'})"
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    photo = models.ImageField(
+        upload_to='user_photos/',
+        blank=True,
+        null=True,
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])]
+    )
+
+    def __str__(self):
+        return f"Profile of {self.user.username}"

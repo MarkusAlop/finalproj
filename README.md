@@ -8,23 +8,38 @@ This project provides a user authentication API and a personal finance managemen
 - **Method:** POST
 - **URL:** `/api/register/`
 - **Request Body:**
-  ```json
-  {
-    "username": "yourusername",
-    "password": "yourpassword",
-    "email": "youremail@example.com"
-  }
-  ```
+  - Content-Type: `multipart/form-data`
+  - Fields:
+    - `username`: string (required)
+    - `password`: string (required)
+    - `email`: string (required)
+    - `photo`: image file (optional, JPEG/PNG/WebP, max 2MB)
+  - **Example using curl:**
+    ```bash
+    curl -X POST http://127.0.0.1:8000/api/register/ \
+      -F "username=yourusername" \
+      -F "password=yourpassword" \
+      -F "email=youremail@example.com" \
+      -F "photo=@/path/to/photo.jpg"
+    ```
 - **Response:**
   - **201 Created**
     ```json
     { "message": "User registered successfully." }
     ```
-  - **400 Bad Request** (validation errors)
+  - **400 Bad Request** (validation errors, e.g. file too large or wrong type)
+    ```json
+    { "photo": ["Photo size must be less than 2MB."] }
+    ```
   - **429 Too Many Requests**
     ```json
     { "detail": "Rate limit exceeded. Max 10 requests per 60 seconds." }
     ```
+
+#### File Upload Requirements
+- Only image files are accepted: JPEG, PNG, WebP
+- Maximum file size: 2MB
+- The `photo` field is optional
 
 ### 2. Login (Obtain JWT Token)
 - **Method:** POST
